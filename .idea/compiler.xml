@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile default="true" name="Default" enabled="true" />
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="common-api" />
+        <module name="feign-order" />
+        <module name="order" />
+        <module name="hystrix-payment8001" />
+        <module name="eureka-server7002" />
+        <module name="eureka-server7001" />
+        <module name="payment8002" />
+        <module name="payment8001" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="common-api" target="1.8" />
+      <module name="eureka-server7001" target="1.8" />
+      <module name="eureka-server7002" target="1.8" />
+      <module name="feign-order" target="1.8" />
+      <module name="hystrix-payment8001" target="1.8" />
+      <module name="order" target="1.8" />
+      <module name="payment8001" target="1.8" />
+      <module name="payment8002" target="1.8" />
+      <module name="springcloudstudy" target="1.8" />
+    </bytecodeTargetLevel>
+  </component>
+</project>

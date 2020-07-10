@@ -16,6 +16,8 @@
         <module>eureka-server7001</module>
         <module>payment8002</module>
         <module>payment8001</module>
+        <module>feign-order</module>
+        <module>hystrix-payment8001</module>
     </modules>
 
     <properties>
