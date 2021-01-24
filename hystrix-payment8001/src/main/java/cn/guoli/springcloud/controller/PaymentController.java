@@ -31,7 +31,7 @@ public class PaymentController {
         return "端口：" + serverPort + "; " + paymentService.ok(id);
     }
 
-    @GetMapping(value = "/timeout/{id}")
+    @GetMapping("/timeout/{id}")
     public String timeout(@PathVariable("id") int id) {
         return "端口：" + serverPort + "; " + paymentService.timeout(id);
     }
