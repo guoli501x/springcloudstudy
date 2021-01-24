@@ -5,6 +5,7 @@ import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixProperty;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -43,4 +44,32 @@ public class PaymentServiceImpl implements PaymentService {
     public String timeoutHandle(int id) {
         return "线程是： " + Thread.currentThread().getName() + "; timeout, id = " +id + " 服务方兜底方法";
     }
+
+    /**
+     * 服务熔断
+     * 第一个=====是否开启服务熔断-断路器
+     * 第二个=====请求次数
+     * 第三个=====时间范围，单位ms
+     * 第四个=====失败率
+     * @param id id
+     * @return return
+     */
+    @Override
+    @HystrixCommand(fallbackMethod = "paymentCircuitBreakerFallback", commandProperties = {
+            @HystrixProperty(name = "circuitBreaker.enabled", value = "true"),
+            @HystrixProperty(name = "circuitBreaker.requestVolumeThreshold", value = "10"),
+            @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds", value = "10000"),
+            @HystrixProperty(name = "circuitBreaker.errorThresholdPercentage", value = "10")
+    })
+    public String paymentCircuitBreaker(int id) {
+        if (id < 0) {
+            throw new RuntimeException("id 不能为负数- " + id);
+        }
+        return Thread.currentThread().getName() + " 调用成功， 流水号 " + UUID.randomUUID();
+    }
+
+    public String paymentCircuitBreakerFallback(int id) {
+        return "服务熔断测试- id 不能为负数-";
+    }
+
 }
