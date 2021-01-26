@@ -5,6 +5,8 @@ import cn.guoli.springcloud.entities.Payment;
 import cn.guoli.springcloud.service.PaymentService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 功能描述
@@ -29,6 +33,9 @@ public class PaymentControler {
 
     @Value("${server.port}")
     private String serverPort;
+
+    @Resource
+    private DiscoveryClient discoveryClient;
 
     @PostMapping(value = "/add")
     public CommonResult<Payment> addPayment(@RequestBody Payment payment) {
@@ -52,5 +59,31 @@ public class PaymentControler {
             log.info("get " + id + " success");
             return new CommonResult(200, "success, serverPort: " + serverPort, payment);
         }
+    }
+
+    @GetMapping(value = "/getDiscovery")
+    public Object getDiscovery() {
+        List<String> services = discoveryClient.getServices();
+        for (String element : services) {
+            log.info("element: " + element);
+        }
+
+        List<ServiceInstance> instances = discoveryClient.getInstances("PAYMENT-SERVICE");
+        for (ServiceInstance instance : instances) {
+            log.info(instance.getInstanceId()+"\t"+instance.getHost()+"\t"+instance.getPort()+"\t"+instance.getUri());
+        }
+
+        return this.discoveryClient;
+    }
+
+    // 测试feign的超时控制
+    @GetMapping("/feign/timeout")
+    public String testFeignTimeout() {
+        try {
+            TimeUnit.SECONDS.sleep(3);
+        } catch (InterruptedException e) {
+            log.error(e.getMessage());
+        }
+        return serverPort;
     }
 }

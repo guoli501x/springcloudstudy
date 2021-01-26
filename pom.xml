@@ -18,6 +18,8 @@
         <module>payment8001</module>
         <module>feign-order</module>
         <module>hystrix-payment8001</module>
+        <module>hystrix-dashboard9001</module>
+        <module>gateway9527</module>
     </modules>
 
     <properties>
