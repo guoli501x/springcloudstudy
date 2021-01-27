@@ -14,6 +14,14 @@ spring:
           uri: lb://payment-service  # 路由转发后实际访问地址
           predicates:
             - Path=/payment/getById/**  # 访问地址
+            - After=2021-01-27T20:47:01.941+08:00[Asia/Shanghai]  # 路由在该时间之后生效
+            - Before=2022-01-27T20:47:01.941+08:00[Asia/Shanghai]  # 路由在该时间之前生效
+            - Between=2021-01-27T20:47:01.941+08:00[Asia/Shanghai],2022-01-27T21:47:01.941+08:00[Asia/Shanghai]  # 路由在这段时间之内生效
+            - Cookie=username,zhangsan  # 必须带有cookie并且“username”的值与配置的“zhangsan”正则匹配成功
+            - Header=X-Request-Id,\d+  # 请求头必须带有"X-Request-Id"属性并且值与配置的“\d+”正则匹配成功
+            - Host=**.somehost.com  # 必须带有"Host"并且值与配置的“**.somehost.com”正则匹配成功
+            - Method=GET  # 设置请求方式
+            #- Query=username,\d+  # 设置参数，即带有参数username并且值与配置的“\d+”正则匹配成功
 
         - id: payment_route2
           uri: lb://payment-service
