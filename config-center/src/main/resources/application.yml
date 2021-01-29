@@ -1,0 +1,21 @@
+server:
+  port: 3344
+
+spring:
+  application:
+    name: config-center-service
+  cloud:
+    config:
+      label: main  # 分支
+      server:
+        git:
+          uri: https://github.com/guoli501x/spring-cloud-config.git  # github仓库路径
+          username: guoli501x  # github用户名
+          password: guoli501X520!  # github密码
+          search-paths:
+            - spring-cloud-config  # 项目名
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka7001.com:7001/eureka,http://eureka7002.com:7002/eureka

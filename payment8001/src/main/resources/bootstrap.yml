@@ -1,0 +1,15 @@
+spring:
+  cloud:
+    config:
+      # 找到分支为main的配置文件config-dev.yml
+      label: main  # 分支
+      name: config  # 配置文件名称
+      profile: dev  # 环境
+      uri: http://localhost:3344  # 配置中心地址
+
+# 暴露监控端口
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
