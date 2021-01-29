@@ -20,7 +20,6 @@
         <module>hystrix-payment8001</module>
         <module>hystrix-dashboard9001</module>
         <module>gateway9527</module>
-        <module>config-center3344</module>
         <module>config-center</module>
     </modules>
 
