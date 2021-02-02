@@ -14,8 +14,20 @@ spring:
           password: guoli501X520!  # github密码
           search-paths:
             - spring-cloud-config  # 项目名
+  rabbitmq:
+    host: 192.168.10.128
+    port: 5672
+    username: admin
+    password: admin
 
 eureka:
   client:
     service-url:
       defaultZone: http://eureka7001.com:7001/eureka,http://eureka7002.com:7002/eureka
+
+# 暴露bus刷新的监控端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "bus-refresh"
