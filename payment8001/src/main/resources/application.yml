@@ -10,6 +10,11 @@ spring:
     url: jdbc:mysql://localhost:3306/study?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: root
+  zipkin:
+    base-url: http://localhost:9411  # zipkin地址
+  sleuth:
+    sampler:
+      probability: 1  # 设置采样率，在0-1之间，1表示全部采集
 
 eureka:
   client:
