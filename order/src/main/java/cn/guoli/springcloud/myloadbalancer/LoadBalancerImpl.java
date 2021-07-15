@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 功能描述
+ * 负载均衡-自定义轮询算法
  *
  * @author guoli
  * @Date 2020/6/26 23:03
