@@ -6,27 +6,53 @@ spring:
     name: gateway9527
   cloud:
     gateway:
+      enabled: true  # 是否开启网关，默认true
       discovery:
         locator:
           enabled: true  # 开启从注册中心动态创建路由
       routes:
         - id: payment_route1  # 路由id，唯一
-          uri: lb://payment-service  # 路由转发后实际访问地址
-          predicates:
-            - Path=/payment/getById/**  # 访问地址
+          # 路由转发后实际访问地址，lb为负载均衡（默认轮训），payment-service为微服务名，也可以为http://127.0.0.1:8000或者http://test.com
+          uri: lb://payment-service
+          predicates:  # 断言，设置匹配URL的规则
+            # 可以允许访问的接口路径，默认可以访问所有接口，多个以“,”英文逗号分隔，- Path在每个 - id（即每组路由规则）中只能有一个
+#            - Path=/payment/getById/**,/payment/add
+#            - Path=/gateway/test/header/{id}
             - After=2021-01-27T20:47:01.941+08:00[Asia/Shanghai]  # 路由在该时间之后生效
             - Before=2022-01-27T20:47:01.941+08:00[Asia/Shanghai]  # 路由在该时间之前生效
-            - Between=2021-01-27T20:47:01.941+08:00[Asia/Shanghai],2022-01-27T21:47:01.941+08:00[Asia/Shanghai]  # 路由在这段时间之内生效
+            # 路由在这段时间之内生效
+            - Between=2021-01-27T20:47:01.941+08:00[Asia/Shanghai],2022-01-27T21:47:01.941+08:00[Asia/Shanghai]
             - Cookie=username,zhangsan  # 必须带有cookie并且“username”的值与配置的“zhangsan”正则匹配成功
             - Header=X-Request-Id,\d+  # 请求头必须带有"X-Request-Id"属性并且值与配置的“\d+”正则匹配成功
             - Host=**.somehost.com  # 必须带有"Host"并且值与配置的“**.somehost.com”正则匹配成功
-            - Method=GET  # 设置请求方式
-            #- Query=username,\d+  # 设置参数，即带有参数username并且值与配置的“\d+”正则匹配成功
+            - Method=GET,POST  # 设置请求方式
+            - Query=username,\d+  # 设置参数，即带有参数username并且值与配置的“\d+”正则匹配成功
+            - Query=id,\d+  # 多个参数可以有多个Query，猜测（待验证）：所有入Query这种一次配置一个键值对的属性，都可以有多个
+            # 限制可以访问网关的IP，如果网关在代理层之后要注意IP的真实性
+            - RemoteAddr=127.0.0.1/24,192.168.0.1/16,172.0.0.1/8,10.25.48.32
+            # 权重，group1为组名，3为权重值，int类型，要是有权重，uri不能是服务名，本路由权重值/同组所有路由权重值之和=分配到本路由的几率
+            - Weight=group1,3
+          filters:  # 过滤器
+            - AddRequestHeader=X-Request-red, blue  # 在请求头中加入X-Request-red = blue
+            # 在请求头中加入X-Request-red-id = blue + URL中的入参id，注意：要使用这个，获取URL中的入参，必须把URL写在 - Path中
+#            - AddRequestHeader=X-Request-red-id, blue-{id}
+            - AddRequestParameter=color, blue  # 在请求中加入参数，color为字段名，blue为
+#            - AddRequestParameter=foo, bar-{segment}  # 在请求中加入参数，值可以动态获取URL中的参数拼接
+            - AddResponseHeader=X-Response-color, Blue  # 在响应消息头中添加
+#            - AddResponseHeader=foo, bar-{segment}  # 在响应消息头中添加，值可以动态获取URL中的参数
+            # 删除响应消息头中“重复”的参数，多个以“空格”分隔
+            - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            # RETAIN_FIRST (default), RETAIN_LAST, and RETAIN_UNIQUE
+#            - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin, RETAIN_LAST
+            - name: CircuitBreaker
+              args:
+                name: myCircuitBreaker
+                fallbackUri: forward:/fallback
 
-        - id: payment_route2
-          uri: lb://payment-service
-          predicates:
-            - Path=/payment/getDiscovery
+#        - id: payment_route2
+#          uri: lb://order-service
+#          predicates:
+#            - Weight=group1,8
 
 eureka:
   instance:
@@ -34,3 +60,40 @@ eureka:
   client:
     service-url:
       defaultZone: http://eureka7001.com:7001/eureka,http://eureka7002.com:7002/eureka
+
+resilience4j.circuitbreaker:
+  configs: #通用配置
+    default: # 断路器系统默认配置
+      #失败率，错误率达到或高于该值则进入open状态
+      failureRateThreshold: 50
+      #慢调用阀值，请求执行的时间大于该值时会标记为慢调用
+      slowCallDurationThreshold: 60s
+      #慢调用熔断阀值，当慢调用率达到或高于该值时，进入open状态
+      slowCallRateThreshold: 100
+      #状态滚动收集器大小，close状态时收集多少请求状态，用于计算失败率。
+      slidingWindowSize: 100
+      #状态收集器类型
+      #COUNT_BASED：根据数量计算，slidingWindowSize为次数
+      #TIME_BASED：根据时间计算，slidingWindowSize为秒数
+      slidingWindowType: COUNT_BASED
+      #计算错误率的最小请求数，不足最小调用次数不会触发任何变化。
+      minimumNumberOfCalls: 10
+      #是否自动进入halfOpen状态，默认false-一定时间后进入halfopen，ture-需要通过接口执行。
+      automaticTransitionFromOpenToHalfOpenEnabled: false
+      #进入halfOpen状态时，可以被调用次数，就算这些请求的失败率，低于设置的失败率变为close状态，否则变为open。
+      permittedNumberOfCallsInHalfOpenState: 10
+      #open状态变为half状态需要等待的时间，即熔断多久后开始尝试访问被熔断的服务。
+      waitDurationInOpenState: 60s
+      #事件缓冲区大小？？
+      eventConsumerBufferSize: 10
+      #被计为失败的异常集合，默认情况下所有异常都为失败。
+      recordExceptions:
+        - java.lang.Exception
+      #不会被计为失败的异常集合，优先级高于recordExceptions。
+      ignoreExceptions:
+        - java.lang.IllegalStateException
+  instances: #熔断器类型
+    aCustomizer: #使用默认配置
+      baseConfig: default
+    cacheCustomizer: #自定义配置
+      failureRateThreshold: 10
