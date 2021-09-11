@@ -36,7 +36,7 @@ public class PaymentControler {
     @Value("${server.port}")
     private String serverPort;
 
-    @Value("${config}")
+    @Value("${config:test}")
     private String config;
 
     @Resource
