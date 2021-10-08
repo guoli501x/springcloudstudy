@@ -34,7 +34,7 @@ public class GatewayTestController {
         return 1 / 0;
     }
 
-    @PostMapping("/test")
+    @PostMapping("/gateway/test")
     public String test(@RequestParam String name, @RequestParam String age) {
         return name + age;
     }

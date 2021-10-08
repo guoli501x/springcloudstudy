@@ -4,6 +4,9 @@ server:
 spring:
   application:
     name: gateway9527
+  redis:
+    host: 192.168.10.128
+    port: 6379
   cloud:
     gateway:
       enabled: true  # 是否开启网关，默认true
@@ -26,28 +29,85 @@ spring:
             - Header=X-Request-Id,\d+  # 请求头必须带有"X-Request-Id"属性并且值与配置的“\d+”正则匹配成功
             - Host=**.somehost.com  # 必须带有"Host"并且值与配置的“**.somehost.com”正则匹配成功
             - Method=GET,POST  # 设置请求方式
-            - Query=username,\d+  # 设置参数，即带有参数username并且值与配置的“\d+”正则匹配成功
+#            - Query=username,\d+  # 设置参数，即带有参数username并且值与配置的“\d+”正则匹配成功
             - Query=id,\d+  # 多个参数可以有多个Query，猜测（待验证）：所有入Query这种一次配置一个键值对的属性，都可以有多个
             # 限制可以访问网关的IP，如果网关在代理层之后要注意IP的真实性
             - RemoteAddr=127.0.0.1/24,192.168.0.1/16,172.0.0.1/8,10.25.48.32
             # 权重，group1为组名，3为权重值，int类型，要是有权重，uri不能是服务名，本路由权重值/同组所有路由权重值之和=分配到本路由的几率
-            - Weight=group1,3
+#            - Weight=group1,3
           filters:  # 过滤器
             - AddRequestHeader=X-Request-red, blue  # 在请求头中加入X-Request-red = blue
+            - SetRequestHeader=X-Request-Red, Blue  # 将请求消息头中的X-Request-Red的值设置（替换）为Blue
+#            - SetRequestHeader=foo, bar-{segment}  # 如果- Host: {segment}.myhost.org，可以动态获取
+            - RemoveRequestHeader=X-Request-Foo  # 移除请求消息头中的X-Request-Foo
             # 在请求头中加入X-Request-red-id = blue + URL中的入参id，注意：要使用这个，获取URL中的入参，必须把URL写在 - Path中
 #            - AddRequestHeader=X-Request-red-id, blue-{id}
             - AddRequestParameter=color, blue  # 在请求中加入参数，color为字段名，blue为
 #            - AddRequestParameter=foo, bar-{segment}  # 在请求中加入参数，值可以动态获取URL中的参数拼接
+            - RemoveRequestParameter=red  # 移除请求参数red
             - AddResponseHeader=X-Response-color, Blue  # 在响应消息头中添加
+            - SetResponseHeader=X-Response-Red, Blue  # 将响应头中的X-Response-Red的值设置（替换）为Blue
+#            - SetResponseHeader=foo, bar-{segment}  # 如果- Host: {segment}.myhost.org，可以动态获取
+            - RemoveResponseHeader=X-Response-Foo  # 移除响应消息头中的X-Response-Foo
 #            - AddResponseHeader=foo, bar-{segment}  # 在响应消息头中添加，值可以动态获取URL中的参数
             # 删除响应消息头中“重复”的参数，多个以“空格”分隔
             - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
             # RETAIN_FIRST (default), RETAIN_LAST, and RETAIN_UNIQUE
 #            - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin, RETAIN_LAST
-            - name: CircuitBreaker
+            # 从请求消息头中取出Blue的值，赋值给X-Request-Red，如果Blue不存在，则没有影响，如果X-Request-Red不存在，则创建
+            - MapRequestHeader=Blue, X-Request-Red
+            - name: CircuitBreaker  # 断路器
               args:
-                name: myCircuitBreaker
-                fallbackUri: forward:/fallback
+                name: myCircuitBreaker  # 自定义断路器
+                fallbackUri: forward:/fallback  # 转发到回退方法，该方法也不一定要在网关服务上，可以通过路由调用其他服务上的接口
+                statusCodes:  # 设置使用断路器的状态码，可以使用带有状态代码值的整数或HttpStatus枚举的字符串表示
+                  - 500
+                  - "NOT_FOUND"
+            # 改写路径，当请求/aaa 接口时，会改写去请求/test 接口，URL可以是正则，请注意，由于 YAML 规范，$应替换$\为
+            - RewritePath=/aaa, /test
+            # 改写响应消息头中Location的值，四个参数
+            # 第一个参数：NEVER_STRIP：版本信息不会被剥离，即使原始请求路径不包含版本
+            #           AS_IN_REQUEST：仅当原始请求路径不包含任何版本时，才会剥离版本【默认】
+            #           ALWAYS_STRIP：即使原始请求路径包含版本，也会剥离版本
+            # 第三个参数：如果提供，会替换 Response Header Location 值中的 host:port 部分；如果不提供，则会使用 Request 的 Host 作为默认值
+            # 第四个参数：协议会与该值匹配，如果不匹配，过滤器不回做任何操作，默认值 http|https|ftp|ftps
+            - RewriteLocationResponseHeader=AS_IN_REQUEST, Location, ,
+            - RewriteResponseHeader=X-Response-Red, , password=[^&]+, password=***  # 重写响应消息头，支持正则
+            - PrefixPath=/gateway  # 在接口URL前面拼接上/gateway后，在转发
+            # 没有值，为请求添加一个preserveHostHeader=true的属性，路由过滤器会检查该属性以决定是否要发送原始的Host
+            - PreserveHostHeader
+            - name: RequestRateLimiter  # 限流
+              args:
+                redis-rate-limiter.replenishRate: 10  # 平均每秒的请求数（在requestedTokens为1的时候）
+                # 突发情况下允许用户在一秒内执行的最大请求数（在requestedTokens为1的时候）。这是令牌桶可以容纳的令牌数量。将此值设置为零会阻止所有请求。
+                redis-rate-limiter.burstCapacity: 20
+                # 请求花费多少令牌。这是每个请求从存储桶中获取的令牌数量，默认为 1。
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@apiKeyResolver}"
+            - RedirectTo=302, https://acme.org  # 重定向，第一个参数为300系列的状态码
+            - SaveSession  # 保存 Session，在向下游服务转发请求之前强制执行 WebSession::save操作
+            - SetPath=/{segment}  # 如果- Path=/red/{segment}，对于/red/blue的请求路径，这会在发出下游请求之前将路径设置为/blue。
+#            - SetStatus=401  # 设置返回状态码，无论什么情况，都会返回401
+#            - SetStatus=BAD_REQUEST  # 可能是枚举的整数值404或字符串表示形式
+            - StripPrefix=2  # 从左开始去掉2个/以及后面的值，如/name/blue/red会变为/red
+            - name: Retry  # 重试
+              args:
+                retries: 3  # 应该尝试的重试次数，默认3
+                statuses: BAD_GATEWAY  # 应该重试的 HTTP 状态码，用org.springframework.http.HttpStatus表示
+#                series: CLIENT_ERROR  # 应该重试的 HTTP 状态码，用org.springframework.http.HttpStatus.Series表示，默认SERVER_ERROR
+                methods: GET,POST  # 应该重试的 HTTP 方法，默认获取方法
+#                exceptions: TimeoutException  # 应该重试的异常，默认IOException和TimeoutException
+                backoff:  # 为重试配置的指数退避，默认禁用，重试的间隔时间为firstBackoff乘以factor的n次方，其中n为迭代次数
+                  firstBackoff: 10ms
+                  maxBackoff: 50ms  # 最大后退限制
+                  factor: 2
+                  basedOnPreviousValue: false  # 如果为true，则使用（PreviousBackoff * factor）计算退避。
+            - name: RequestSize  # 设置请求的大小，超过则被拒绝，默认请求大小设置为 5 MB
+              args:
+                maxSize: 5000000  # 没有单位这则是默认B，可以是1MB等
+            - name: SetRequestHostHeader  # 在某些情况下，可能需要覆盖主机标头。在这种情况下可以用指定的值替换现有的主机头
+              args:
+                host: example.org
 
 #        - id: payment_route2
 #          uri: lb://order-service

@@ -34,8 +34,8 @@ public class GatewayTestController {
         return 1 / 0;
     }
 
-    @PostMapping("/test")
-    public String test(@RequestParam String name, @RequestParam String age) {
+    @PostMapping("/gateway/test")
+    public String test(@RequestParam String name, @RequestParam String age) throws InterruptedException {
         return name + age;
     }
 }
