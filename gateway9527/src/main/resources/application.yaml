@@ -4,15 +4,30 @@ server:
 spring:
   application:
     name: gateway9527
-  redis:
-    host: 192.168.10.128
-    port: 6379
+#  redis:
+#    host: 192.168.10.128
+#    port: 6379
   cloud:
     gateway:
       enabled: true  # 是否开启网关，默认true
+#      metrics:
+#        enabled: true  # 开启网关指标过滤器
       discovery:
         locator:
           enabled: true  # 开启从注册中心动态创建路由
+      httpclient:
+#        ssl:
+#          # 配置证书，如果没有配置，则使用默认信任库
+#          trustedX509Certificates:
+#            - cert1.pem
+#            - cert2.pem
+#          # TLS超时设置
+#          handshake-timeout: 10000
+#          close-notify-flush-timeout: 3000
+#          close-notify-read-timeout: 0
+        # 全局超时设置，单位ms
+        connect-timeout: 5000
+        response-timeout: 5s
       routes:
         - id: payment_route1  # 路由id，唯一
           # 路由转发后实际访问地址，lb为负载均衡（默认轮训），payment-service为微服务名，也可以为http://127.0.0.1:8000或者http://test.com
@@ -76,20 +91,20 @@ spring:
             - PrefixPath=/gateway  # 在接口URL前面拼接上/gateway后，在转发
             # 没有值，为请求添加一个preserveHostHeader=true的属性，路由过滤器会检查该属性以决定是否要发送原始的Host
             - PreserveHostHeader
-            - name: RequestRateLimiter  # 限流
-              args:
-                redis-rate-limiter.replenishRate: 10  # 平均每秒的请求数（在requestedTokens为1的时候）
-                # 突发情况下允许用户在一秒内执行的最大请求数（在requestedTokens为1的时候）。这是令牌桶可以容纳的令牌数量。将此值设置为零会阻止所有请求。
-                redis-rate-limiter.burstCapacity: 20
-                # 请求花费多少令牌。这是每个请求从存储桶中获取的令牌数量，默认为 1。
-                redis-rate-limiter.requestedTokens: 1
-                key-resolver: "#{@apiKeyResolver}"
-            - RedirectTo=302, https://acme.org  # 重定向，第一个参数为300系列的状态码
+#            - name: RequestRateLimiter  # 限流
+#              args:
+#                redis-rate-limiter.replenishRate: 10  # 平均每秒的请求数（在requestedTokens为1的时候）
+#                # 突发情况下允许用户在一秒内执行的最大请求数（在requestedTokens为1的时候）。这是令牌桶可以容纳的令牌数量。将此值设置为零会阻止所有请求。
+#                redis-rate-limiter.burstCapacity: 20
+#                # 请求花费多少令牌。这是每个请求从存储桶中获取的令牌数量，默认为 1。
+#                redis-rate-limiter.requestedTokens: 1
+#                key-resolver: "#{@apiKeyResolver}"
+#            - RedirectTo=302, https://acme.org  # 重定向，第一个参数为300系列的状态码
             - SaveSession  # 保存 Session，在向下游服务转发请求之前强制执行 WebSession::save操作
-            - SetPath=/{segment}  # 如果- Path=/red/{segment}，对于/red/blue的请求路径，这会在发出下游请求之前将路径设置为/blue。
+#            - SetPath=/{segment}  # 如果- Path=/red/{segment}，对于/red/blue的请求路径，这会在发出下游请求之前将路径设置为/blue。
 #            - SetStatus=401  # 设置返回状态码，无论什么情况，都会返回401
 #            - SetStatus=BAD_REQUEST  # 可能是枚举的整数值404或字符串表示形式
-            - StripPrefix=2  # 从左开始去掉2个/以及后面的值，如/name/blue/red会变为/red
+#            - StripPrefix=2  # 从左开始去掉2个/以及后面的值，如/name/blue/red会变为/red
             - name: Retry  # 重试
               args:
                 retries: 3  # 应该尝试的重试次数，默认3
@@ -105,55 +120,21 @@ spring:
             - name: RequestSize  # 设置请求的大小，超过则被拒绝，默认请求大小设置为 5 MB
               args:
                 maxSize: 5000000  # 没有单位这则是默认B，可以是1MB等
-            - name: SetRequestHostHeader  # 在某些情况下，可能需要覆盖主机标头。在这种情况下可以用指定的值替换现有的主机头
-              args:
-                host: example.org
+#            - name: SetRequestHostHeader  # 在某些情况下，可能需要覆盖主机标头。在这种情况下可以用指定的值替换现有的主机头
+#              args:
+#                host: example.org
+          # 单个路由超时设置，单位ms
+          metadata:
+            response-timeout: 20000
+            connect-timeout: 20000
 
 #        - id: payment_route2
 #          uri: lb://order-service
 #          predicates:
 #            - Weight=group1,8
-
 eureka:
   instance:
     hostname: gateway9527-service
   client:
     service-url:
       defaultZone: http://eureka7001.com:7001/eureka,http://eureka7002.com:7002/eureka
-
-resilience4j.circuitbreaker:
-  configs: #通用配置
-    default: # 断路器系统默认配置
-      #失败率，错误率达到或高于该值则进入open状态
-      failureRateThreshold: 50
-      #慢调用阀值，请求执行的时间大于该值时会标记为慢调用
-      slowCallDurationThreshold: 60s
-      #慢调用熔断阀值，当慢调用率达到或高于该值时，进入open状态
-      slowCallRateThreshold: 100
-      #状态滚动收集器大小，close状态时收集多少请求状态，用于计算失败率。
-      slidingWindowSize: 100
-      #状态收集器类型
-      #COUNT_BASED：根据数量计算，slidingWindowSize为次数
-      #TIME_BASED：根据时间计算，slidingWindowSize为秒数
-      slidingWindowType: COUNT_BASED
-      #计算错误率的最小请求数，不足最小调用次数不会触发任何变化。
-      minimumNumberOfCalls: 10
-      #是否自动进入halfOpen状态，默认false-一定时间后进入halfopen，ture-需要通过接口执行。
-      automaticTransitionFromOpenToHalfOpenEnabled: false
-      #进入halfOpen状态时，可以被调用次数，就算这些请求的失败率，低于设置的失败率变为close状态，否则变为open。
-      permittedNumberOfCallsInHalfOpenState: 10
-      #open状态变为half状态需要等待的时间，即熔断多久后开始尝试访问被熔断的服务。
-      waitDurationInOpenState: 60s
-      #事件缓冲区大小？？
-      eventConsumerBufferSize: 10
-      #被计为失败的异常集合，默认情况下所有异常都为失败。
-      recordExceptions:
-        - java.lang.Exception
-      #不会被计为失败的异常集合，优先级高于recordExceptions。
-      ignoreExceptions:
-        - java.lang.IllegalStateException
-  instances: #熔断器类型
-    aCustomizer: #使用默认配置
-      baseConfig: default
-    cacheCustomizer: #自定义配置
-      failureRateThreshold: 10

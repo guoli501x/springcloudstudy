@@ -31,7 +31,7 @@ public class GatewayController {
         String resultString = "";
         HttpClient httpClient = HttpClients.createDefault();
         try {
-            URIBuilder builder = new URIBuilder("http://127.0.0.1:9527/test?name=" + name);
+            URIBuilder builder = new URIBuilder("http://127.0.0.1:9527/payment-service/test?name=" + name);
             // 设置请求参数
             builder.setParameter("age", age);
             builder.setParameter("id", "1");
@@ -44,10 +44,8 @@ public class GatewayController {
             HttpResponse httpResponse = httpClient.execute(httpPost);
             if (httpResponse.getStatusLine().getStatusCode() == 200) {
                 resultString = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
-            } else if (httpResponse.getStatusLine().getStatusCode() == 404) {
-                resultString = "404";
             } else {
-                resultString = "500";
+                resultString = httpResponse.getStatusLine().getStatusCode() + "";
             }
         } catch (URISyntaxException | IOException | ParseException e) {
             e.printStackTrace();
