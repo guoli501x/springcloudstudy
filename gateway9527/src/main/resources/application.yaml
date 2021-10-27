@@ -15,6 +15,7 @@ spring:
       discovery:
         locator:
           enabled: true  # 开启从注册中心动态创建路由
+          lower-case-service-id: true  # 开启服务ID小写
       httpclient:
 #        ssl:
 #          # 配置证书，如果没有配置，则使用默认信任库
@@ -49,7 +50,7 @@ spring:
             # 限制可以访问网关的IP，如果网关在代理层之后要注意IP的真实性
             - RemoteAddr=127.0.0.1/24,192.168.0.1/16,172.0.0.1/8,10.25.48.32
             # 权重，group1为组名，3为权重值，int类型，要是有权重，uri不能是服务名，本路由权重值/同组所有路由权重值之和=分配到本路由的几率
-#            - Weight=group1,3
+            - Weight=group1,5
           filters:  # 过滤器
             - AddRequestHeader=X-Request-red, blue  # 在请求头中加入X-Request-red = blue
             - SetRequestHeader=X-Request-Red, Blue  # 将请求消息头中的X-Request-Red的值设置（替换）为Blue
@@ -88,7 +89,7 @@ spring:
             # 第四个参数：协议会与该值匹配，如果不匹配，过滤器不回做任何操作，默认值 http|https|ftp|ftps
             - RewriteLocationResponseHeader=AS_IN_REQUEST, Location, ,
             - RewriteResponseHeader=X-Response-Red, , password=[^&]+, password=***  # 重写响应消息头，支持正则
-            - PrefixPath=/gateway  # 在接口URL前面拼接上/gateway后，在转发
+#            - PrefixPath=/gateway  # 在接口URL前面拼接上/gateway后，在转发
             # 没有值，为请求添加一个preserveHostHeader=true的属性，路由过滤器会检查该属性以决定是否要发送原始的Host
             - PreserveHostHeader
 #            - name: RequestRateLimiter  # 限流
@@ -128,10 +129,23 @@ spring:
             response-timeout: 20000
             connect-timeout: 20000
 
-#        - id: payment_route2
-#          uri: lb://order-service
-#          predicates:
-#            - Weight=group1,8
+        - id: payment_route2
+          uri: http://127.0.0.1:8002
+          predicates:
+            - Weight=group1=2,5
+          filters:
+            - StripPrefix=1
+
+# 远程操作端点
+management:
+  endpoint:
+    gateway:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: gateway
+
 eureka:
   instance:
     hostname: gateway9527-service

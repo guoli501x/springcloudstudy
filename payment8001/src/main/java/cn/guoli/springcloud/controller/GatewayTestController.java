@@ -36,6 +36,7 @@ public class GatewayTestController {
 
     @PostMapping("/gateway/test")
     public String test(@RequestParam String name, @RequestParam String age) {
+        log.info(name + age);
         return name + age;
     }
 }

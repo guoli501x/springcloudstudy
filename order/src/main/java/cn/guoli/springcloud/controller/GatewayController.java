@@ -25,13 +25,23 @@ import java.net.URISyntaxException;
 @Slf4j
 @RestController
 public class GatewayController {
+    /**
+     * 网关路径
+     */
+    public static final String GATEWAY_URL = "http://127.0.0.1:9527";
+
+    /**
+     * 服务名
+     */
+    public static final String PAYMENT_SERVICE_NAME = "payment-service";
+
     @PostMapping("/gateway/test")
     public String gatewayTest(@RequestParam String name, @RequestParam String age) {
         log.info("/gateway/test 接口入参：{}, {}", name, age);
         String resultString = "";
         HttpClient httpClient = HttpClients.createDefault();
         try {
-            URIBuilder builder = new URIBuilder("http://127.0.0.1:9527/payment-service/test?name=" + name);
+            URIBuilder builder = new URIBuilder(GATEWAY_URL + "/" + PAYMENT_SERVICE_NAME + "/gateway/test?name=" + name);
             // 设置请求参数
             builder.setParameter("age", age);
             builder.setParameter("id", "1");
